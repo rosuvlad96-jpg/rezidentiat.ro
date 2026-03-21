@@ -313,28 +313,45 @@ Răspunde DOAR cu JSON. Niciun text înainte sau după.`
 
 export function buildDrillGenerationPrompt({
   conceptName,
-  subchapters,
+  conceptNameEn,
+  keyExcerpt,
+  subchapterContext,
+  drillSetId,
 }: {
   conceptName: string
-  subchapters: string[]
+  conceptNameEn: string
+  keyExcerpt: string | null
+  subchapterContext: string
+  drillSetId: number
 }) {
+  const excerptSection = keyExcerpt
+    ? `\nContext din manual:\n"${keyExcerpt}"\n`
+    : ''
+
   return `${DRILL_SYSTEM_PROMPT}
 
-Generează 5 întrebări de drill pentru conceptul: ${conceptName}
-Context: ${subchapters.join(', ')}
+Generează exact 5 întrebări de drill pentru conceptul: "${conceptName}"${conceptNameEn ? ` (${conceptNameEn})` : ''}.
 
-Cerințe:
+Surse bibliografice:
+${subchapterContext}
+${excerptSection}
+Setul de drill: ${drillSetId} din 3. Dacă generezi set 2 sau 3, variază formularea și abordarea față de seturile anterioare.
+
+Cerințe stricte:
 - O întrebare pentru fiecare unghi: definition, mechanism, clinical, comparison, reverse
-- Alege simplu sau multiplu bazat pe ce predă mai bine conceptul
-- Limbă română
-- Fiecare întrebare are 4 variante (A, B, C, D)
-- Fiecare explicație: 2-3 propoziții de reinforcement
+- Alege question_type (simplu/multiplu) pe baza pedagogiei — nu un split fix
+- Fiecare întrebare are exact 4 variante (A, B, C, D), toate plauzibile medical
+- Explicații scurte: 2-3 propoziții, focalizate pe reinforcement
+- "retine" este un hook de memorie — concis, diferit de explicație
+- Pentru multiplu: correct_options conține toate literele corecte ex: ["a","c"]
+- Pentru simplu: correct_options conține exact o literă ex: ["b"]
+- Limbă română medicală standard
 
-Răspunde DOAR cu array JSON:
+Răspunde DOAR cu array JSON valid, fără text înainte sau după, fără backticks:
 [
   {
-    "drill_angle": "definition|mechanism|clinical|comparison|reverse",
-    "question_type": "simplu|multiplu",
+    "drill_angle": "definition",
+    "question_type": "simplu",
     "question_text": "...",
     "option_a": "...",
     "option_b": "...",
@@ -344,7 +361,5 @@ Răspunde DOAR cu array JSON:
     "explanation": "2-3 propoziții de reinforcement.",
     "retine": "Memento scurt."
   }
-]
-
-Răspunde DOAR cu JSON. Niciun text înainte sau după.`
+]`
 }
