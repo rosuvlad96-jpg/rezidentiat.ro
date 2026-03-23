@@ -1,5 +1,3 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-
 export type EventType =
   | 'QUESTION_ANSWERED'
   | 'EXPLANATION_VIEWED'
@@ -19,6 +17,7 @@ interface TrackEventParams {
 }
 
 export async function trackEvent(params: TrackEventParams): Promise<void> {
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
   const supabase = await createServerSupabaseClient()
 
   const { error } = await supabase.from('analytics_events').insert({
@@ -30,13 +29,10 @@ export async function trackEvent(params: TrackEventParams): Promise<void> {
     created_at: new Date().toISOString(),
   })
 
-  // Never throw on analytics failure — log silently
   if (error) {
     console.error('[analytics.trackEvent]', params.eventType, error.message)
   }
 }
-
-// ─── Client-side event tracking (calls API route) ─────────────────────────
 
 export async function trackClientEvent(
   eventType: EventType,
@@ -50,7 +46,6 @@ export async function trackClientEvent(
       body: JSON.stringify({ eventType, payload, sessionId }),
     })
   } catch (err) {
-    // Never throw on analytics failure — log silently
     console.error('[analytics.trackClientEvent]', eventType, err)
   }
 }
