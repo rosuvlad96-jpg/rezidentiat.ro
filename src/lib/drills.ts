@@ -1,4 +1,3 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { generateAndParse } from '@/lib/openai'
 import { buildDrillGenerationPrompt } from '@/lib/prompts'
 
@@ -43,7 +42,8 @@ export interface DrillSession {
 // ─── Generate a new drill set via OpenAI ─────────────────────────────────────
 
 export async function generateDrillSet(conceptId: string): Promise<number> {
-  const supabase = await createServerSupabaseClient()
+ const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   // 1. Fetch concept details
   const { data: concept, error: conceptError } = await supabase
@@ -147,7 +147,8 @@ export async function assignDrillSet(
   conceptId: string,
   trigger: 'manual' | 'auto_suggested' | 'dashboard' = 'manual'
 ): Promise<DrillSession> {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   // 1. What drill sets exist for this concept?
   const { data: allSets } = await supabase
@@ -246,7 +247,8 @@ export async function completeDrill(
   correctCount: number,
   totalCount: number
 ): Promise<{ accuracy_before: number | null; accuracy_after: number }> {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   const drillAccuracy = correctCount / totalCount
 

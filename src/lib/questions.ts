@@ -1,4 +1,3 @@
-import { createServerSupabaseClient } from './supabase-server'
 
 export type PracticeMode = 'general' | 'chapter' | 'exam' | 'diagnostic' | 'drill'
 
@@ -8,7 +7,8 @@ export async function getNextQuestion(
   mode: PracticeMode,
   chapterId?: string
 ) {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   // 25/75 split: 25% simplu, 75% multiplu
   const questionType = Math.random() < 0.25 ? 'simplu' : 'multiplu'
@@ -85,7 +85,8 @@ export async function submitAnswer(
   sessionId: string,
   mode: PracticeMode
 ) {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   // Get the question to check correct answer
   const { data: question, error } = await supabase
@@ -151,7 +152,8 @@ export async function updateConceptStats(
   examId: string,
   isCorrect: boolean
 ) {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   // Get existing stats
   const { data: existing } = await supabase
@@ -206,7 +208,8 @@ export async function updateConceptStats(
 }
 
 export async function getWeakConcepts(userId: string, examId: string, limit = 5) {
-  const supabase = await createServerSupabaseClient()
+ const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   const { data, error } = await supabase
     .from('user_concept_stats')
@@ -234,7 +237,8 @@ export async function getWeakConcepts(userId: string, examId: string, limit = 5)
 }
 
 export async function getDomainAccuracy(userId: string, examId: string) {
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+const supabase = await createServerSupabaseClient()
 
   const { data, error } = await supabase
     .from('user_concept_stats')
