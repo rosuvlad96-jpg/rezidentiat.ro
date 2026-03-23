@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { trackClientEvent } from '@/lib/analytics'
+import { trackClientEvent } from '@/lib/analytics-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
