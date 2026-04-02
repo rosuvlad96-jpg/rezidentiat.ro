@@ -50,12 +50,34 @@ export default function PracticePage() {
   const [sessionId] = useState(() => crypto.randomUUID())
   const [errorMessage, setErrorMessage] = useState('')
   const [questionsAnswered, setQuestionsAnswered] = useState(0)
-
+  const [showDrillSuggestion, setShowDrillSuggestion] = useState(false)
+  const [weakestConcept, setWeakestConcept] = useState<{ concept_id: string; name: string; topic_name: string } | null>(null)
+  
   // ── Load first question on mount ───────────────────────────────────────────
   useEffect(() => {
     trackClientEvent('SESSION_START', { practice_mode: 'general' }, sessionId)
     loadNextQuestion()
   }, [])
+
+  useEffect(() => {
+    if (!showDrillSuggestion) return
+    async function fetchWeakest() {
+      try {
+        const res = await fetch('/api/concepts/weak?limit=1')
+        const data = await res.json()
+        if (data && data.length > 0) {
+          setWeakestConcept({
+            concept_id: data[0].concept_id,
+            name: data[0].concepts?.name ?? '',
+            topic_name: data[0].concepts?.topics?.name ?? '',
+          })
+        }
+      } catch {
+        // silently fail — drill suggestion is non-critical
+      }
+    }
+    fetchWeakest()
+  }, [showDrillSuggestion])
 
   const loadNextQuestion = async () => {
     setPhase('loading')
@@ -109,7 +131,11 @@ export default function PracticePage() {
       if (!res.ok) throw new Error(data.error)
 
       setIsFullyCorrect(data.is_fully_correct)
-      setQuestionsAnswered(q => q + 1)
+      setQuestionsAnswered(q => {
+  const next = q + 1
+  if (next % 12 === 0) setShowDrillSuggestion(true)
+  return next
+})
 
       if (!data.is_fully_correct) {
         // Load explanation for wrong answers
@@ -176,6 +202,43 @@ export default function PracticePage() {
 
   return (
     <div style={s.page}>
+      {/* Drill suggestion card */}
+{showDrillSuggestion && (
+  <div style={s.drillSuggestionOverlay}>
+    <div style={s.drillSuggestionCard}>
+      <p style={s.drillSuggestionTitle}>Ai răspuns la 12 întrebări</p>
+      {weakestConcept ? (
+        <p style={s.drillSuggestionText}>
+          Subiectul tău cel mai slab este{' '}
+          <span style={s.drillSuggestionHighlight}>{weakestConcept.topic_name}</span>
+        </p>
+      ) : (
+        <p style={s.drillSuggestionText}>Vrei să faci un exercițiu scurt?</p>
+      )}
+      <div style={s.drillSuggestionActions}>
+        <button
+          style={s.btnPrimary}
+          onClick={() => {
+            setShowDrillSuggestion(false)
+            if (weakestConcept) router.push(`/drill/${weakestConcept.concept_id}`)
+          }}
+        >
+          Începe exercițiul
+        </button>
+        <button
+          style={s.btnSecondary}
+          onClick={() => {
+  setShowDrillSuggestion(false)
+  setQuestionsAnswered(0)
+}}
+        >
+          Continuă practica
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       {/* Header */}
       <div style={s.header}>
         <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
@@ -395,4 +458,45 @@ const s: Record<string, React.CSSProperties> = {
   },
   loadingText: { color: '#64748b', fontSize: '14px' },
   errorText: { color: '#ef4444', fontSize: '14px', marginBottom: '16px' },
+
+drillSuggestionOverlay: {
+    position: 'fixed' as const,
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(2,9,23,0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+    padding: '24px',
+  },
+  drillSuggestionCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: '20px',
+    border: '1px solid #1e293b',
+    padding: '32px 24px',
+    width: '100%',
+    maxWidth: '360px',
+    textAlign: 'center' as const,
+  },
+  drillSuggestionTitle: {
+    fontSize: '18px',
+    color: '#f1f5f9',
+    fontWeight: 700,
+    margin: '0 0 12px',
+  },
+  drillSuggestionText: {
+    fontSize: '14px',
+    color: '#94a3b8',
+    margin: '0 0 24px',
+    lineHeight: 1.5,
+  },
+  drillSuggestionHighlight: {
+    color: '#38bdf8',
+    fontWeight: 600,
+  },
+  drillSuggestionActions: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+  },
 }

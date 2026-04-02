@@ -37,9 +37,35 @@ const supabase = await createServerSupabaseClient()
     .eq('is_active', true)
     .eq('question_type', questionType)
 
-  // Filter by chapter if in chapter mode
+// Filter by chapter if in chapter mode
   if (mode === 'chapter' && chapterId) {
     query = query.eq('chapter_id', chapterId)
+  }
+
+  // Chapter mode: prioritize unseen concepts first
+  if (mode === 'chapter') {
+    const { data: seenConcepts } = await supabase
+      .from('user_concept_stats')
+      .select('concept_id')
+      .eq('user_id', userId)
+      .eq('exam_id', examId)
+      .gt('total_attempts', 0)
+
+    const seenConceptIds = seenConcepts?.map(c => c.concept_id) ?? []
+
+    if (seenConceptIds.length > 0) {
+      const { data: unseenQuestions } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('exam_id', examId)
+        .eq('is_active', true)
+        .eq('chapter_id', chapterId ?? '')
+        .not('concept_id', 'in', `(${seenConceptIds.join(',')})`)
+
+      if (unseenQuestions && unseenQuestions.length > 0) {
+        query = query.not('concept_id', 'in', `(${seenConceptIds.join(',')})`)
+      }
+    }
   }
 
   // Get answered question IDs to avoid repeats in same session
@@ -169,13 +195,11 @@ const supabase = await createServerSupabaseClient()
     const newTotal = existing.total_attempts + 1
     const newAccuracy = newCorrect / newTotal
 
-    // Classification rules
+ // Classification rules — 1+ attempt, pure accuracy
     let classification = 'unknown'
-    if (newTotal >= 3) {
-      if (newAccuracy < 0.5) classification = 'weak'
-      else if (newAccuracy <= 0.8) classification = 'medium'
-      else classification = 'strong'
-    }
+    if (newAccuracy < 0.5) classification = 'weak'
+    else if (newAccuracy <= 0.8) classification = 'medium'
+    else classification = 'strong'
 
     await supabase
       .from('user_concept_stats')
@@ -201,7 +225,7 @@ const supabase = await createServerSupabaseClient()
         wrong_count: isCorrect ? 0 : 1,
         total_attempts: 1,
         accuracy: isCorrect ? 1 : 0,
-        classification: 'unknown',
+        classification: isCorrect ? 'strong' : 'weak',
         last_seen: new Date().toISOString(),
       })
   }
@@ -229,7 +253,6 @@ const supabase = await createServerSupabaseClient()
     .eq('user_id', userId)
     .eq('exam_id', examId)
     .eq('classification', 'weak')
-    .gte('total_attempts', 3)
     .order('accuracy', { ascending: true })
     .limit(limit)
 
