@@ -5,19 +5,13 @@ import { useRouter } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface WeakConcept {
-  concept_id: string
+interface WeakTopic {
+  topic_id: string
+  topic_name: string
+  domain_name: string
   accuracy: number
   total_attempts: number
-  concepts: {
-    name: string
-    topics: {
-      name: string
-      domains: {
-        name: string
-      }
-    }
-  }
+  weak_concept_count: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,36 +25,36 @@ function accuracyColor(accuracy: number): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ConceptsPage() {
+export default function TopicsPage() {
   const router = useRouter()
-  const [concepts, setConcepts] = useState<WeakConcept[]>([])
+  const [topics, setTopics] = useState<WeakTopic[]>([])
   const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    async function loadConcepts() {
+    async function loadTopics() {
       try {
-        const res = await fetch('/api/concepts/weak?limit=20')
+        const res = await fetch('/api/topics/weak')
         const data = await res.json()
         if (!res.ok) throw new Error(data.error)
-        setConcepts(data)
+        setTopics(data)
       } catch (err: any) {
         setErrorMessage(err.message)
       } finally {
         setLoading(false)
       }
     }
-    loadConcepts()
+    loadTopics()
   }, [])
 
-  const displayed = showAll ? concepts : concepts.slice(0, 5)
+  const displayed = showAll ? topics : topics.slice(0, 5)
 
   // ── Render: loading ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={s.centered}>
-        <p style={s.loadingText}>Se încarcă conceptele...</p>
+        <p style={s.loadingText}>Se încarcă subiectele...</p>
       </div>
     )
   }
@@ -70,7 +64,7 @@ export default function ConceptsPage() {
       {/* Header */}
       <div style={s.header}>
         <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
-        <h1 style={s.title}>Concepte slabe</h1>
+        <h1 style={s.title}>Subiecte de îmbunătățit</h1>
         <p style={s.subtitle}>Sortate de la cel mai slab la cel mai bun</p>
       </div>
 
@@ -82,67 +76,63 @@ export default function ConceptsPage() {
       )}
 
       {/* Empty state */}
-      {!errorMessage && concepts.length === 0 && (
+      {!errorMessage && topics.length === 0 && (
         <div style={s.emptyBox}>
-          <p style={s.emptyIcon}>🎯</p>
-          <p style={s.emptyTitle}>Niciun concept slab încă</p>
+          <p style={s.emptyIcon}>📚</p>
+          <p style={s.emptyTitle}>Încă nu ai subiecte de îmbunătățit</p>
           <p style={s.emptySubtitle}>
-            Răspunde la cel puțin 3 întrebări dintr-un concept pentru a-l vedea aici.
+            Începe să răspunzi la întrebări și îți vom arăta unde ai nevoie de mai multă practică
           </p>
-          <button style={s.btnPrimary} onClick={() => router.push('/practice')}>
-            Începe să exersezi
-          </button>
         </div>
       )}
 
-      {/* Concept list */}
+      {/* Topic list */}
       {displayed.length > 0 && (
         <div style={s.list}>
-          {displayed.map((item, index) => {
-            const concept = item.concepts
-            const topic = concept?.topics
-            const domain = topic?.domains
-
-            return (
-              <div key={item.concept_id} style={s.card}>
-                <div style={s.cardLeft}>
-                  <div style={s.rank}>#{index + 1}</div>
-                  <div style={s.cardInfo}>
-                    <p style={s.conceptName}>{concept?.name ?? '—'}</p>
-                    <p style={s.conceptMeta}>
-                      {domain?.name ?? '—'} · {topic?.name ?? '—'}
-                    </p>
-                    <p style={s.attempts}>{item.total_attempts} încercări</p>
-                  </div>
-                </div>
-                <div style={s.cardRight}>
-                  <span
-                    style={{
-                      ...s.accuracyBadge,
-                      color: accuracyColor(item.accuracy),
-                      borderColor: accuracyColor(item.accuracy),
-                    }}
-                  >
-                    {Math.round(item.accuracy * 100)}%
-                  </span>
-                  <button
-                    style={s.drillBtn}
-                    onClick={() => router.push(`/drill/${item.concept_id}`)}
-                  >
-                    Începe exercițiile
-                  </button>
+          {displayed.map((topic, index) => (
+            <div key={topic.topic_id} style={s.card}>
+              <div style={s.cardLeft}>
+                <div style={s.rank}>#{index + 1}</div>
+                <div style={s.cardInfo}>
+                  <p style={s.topicName}>{topic.topic_name}</p>
+                  <p style={s.domainName}>{topic.domain_name}</p>
+                  <p style={s.attempts}>
+                    {topic.total_attempts} încercări
+                    {topic.weak_concept_count > 0 && (
+                      <span style={s.weakCount}>
+                        {' · '}{topic.weak_concept_count} concepte slabe
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-            )
-          })}
+              <div style={s.cardRight}>
+                <span
+                  style={{
+                    ...s.accuracyBadge,
+                    color: accuracyColor(topic.accuracy),
+                    borderColor: accuracyColor(topic.accuracy),
+                  }}
+                >
+                  {Math.round(topic.accuracy * 100)}%
+                </span>
+                <button
+                  style={s.drillBtn}
+                  onClick={() => router.push(`/topics/${topic.topic_id}`)}
+                >
+                  Îmbunătățește
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Show more / less */}
-      {concepts.length > 5 && (
+      {topics.length > 5 && (
         <div style={s.showMoreRow}>
           <button style={s.showMoreBtn} onClick={() => setShowAll(v => !v)}>
-            {showAll ? 'Arată mai puține' : `Vezi toate (${concepts.length})`}
+            {showAll ? 'Arată mai puține' : `Vezi toate (${topics.length})`}
           </button>
         </div>
       )}
@@ -180,7 +170,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   emptyIcon: { fontSize: '40px', margin: '0 0 12px' },
   emptyTitle: { fontSize: '18px', color: '#f1f5f9', fontWeight: 700, margin: '0 0 8px' },
-  emptySubtitle: { fontSize: '14px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.5 },
+  emptySubtitle: { fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.5 },
   list: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '10px' },
   card: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -193,9 +183,10 @@ const s: Record<string, React.CSSProperties> = {
     minWidth: '24px', paddingTop: '2px',
   },
   cardInfo: { flex: 1 },
-  conceptName: { fontSize: '15px', color: '#f1f5f9', fontWeight: 600, margin: '0 0 4px' },
-  conceptMeta: { fontSize: '12px', color: '#64748b', margin: '0 0 4px' },
+  topicName: { fontSize: '15px', color: '#f1f5f9', fontWeight: 600, margin: '0 0 4px' },
+  domainName: { fontSize: '12px', color: '#64748b', margin: '0 0 4px' },
   attempts: { fontSize: '11px', color: '#475569', margin: 0 },
+  weakCount: { color: '#f97316' },
   cardRight: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px',
   },
@@ -216,11 +207,5 @@ const s: Record<string, React.CSSProperties> = {
     border: '1px solid #1e293b', backgroundColor: 'transparent',
     color: '#94a3b8', fontSize: '13px', fontWeight: 600,
     cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-  },
-  btnPrimary: {
-    padding: '12px 24px', borderRadius: '10px',
-    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-    color: '#fff', fontWeight: 700, fontSize: '14px',
-    border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
   },
 }
