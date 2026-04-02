@@ -90,7 +90,7 @@ export default function DashboardPage() {
         <h1 style={s.greetingTitle}>Bună ziua! 👋</h1>
         {weakestConcept ? (
           <p style={s.greetingSubtitle}>
-            Conceptul tău cel mai slab este{' '}
+            Cel mai slab subiect al tău este{' '}
             <span style={s.weakConceptName}>{weakestConcept.name}</span>
             {' '}— acuratețe{' '}
             <span style={{ color: accuracyColor(weakestConcept.accuracy) }}>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
         <div style={s.modeCards}>
           <button style={s.modeCard} onClick={() => router.push('/concepts')}>
             <span style={s.modeIcon}>🎯</span>
-            <span style={s.modeTitle}>Concepte slabe</span>
+            <span style={s.modeTitle}>Subiecte de îmbunătățit</span>
             <span style={s.modeDesc}>Focusat pe ce știi mai puțin</span>
           </button>
           <button style={s.modeCard} onClick={() => router.push('/practice')}>
