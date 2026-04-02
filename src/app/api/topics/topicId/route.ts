@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ topicId: string }> }
+  context: { params: Promise<{ topicId: string }> }
 ) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -12,7 +12,7 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { topicId } = await params
+  const { topicId } = await context.params
   const examId = process.env.NEXT_PUBLIC_EXAM_ID!
 
   // Get topic details
@@ -73,7 +73,6 @@ export async function GET(
       classification: stat?.classification ?? 'unknown',
     }
   }).sort((a, b) => {
-    // Weak first, then by accuracy ascending, unknown last
     if (a.classification === 'weak' && b.classification !== 'weak') return -1
     if (b.classification === 'weak' && a.classification !== 'weak') return 1
     if (a.total_attempts === 0) return 1
