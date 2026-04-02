@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +38,13 @@ const OPTIONS = ['a', 'b', 'c', 'd'] as const
 export default function DrillPage() {
   const { conceptId } = useParams<{ conceptId: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const source = searchParams.get('source') ?? 'dashboard'
+  const returnTopicId = searchParams.get('topicId') ?? ''
+  const returnTopicName = searchParams.get('topicName') ?? ''
+  const returnCompleted = parseInt(searchParams.get('completed') ?? '0')
+  const returnTotal = parseInt(searchParams.get('total') ?? '0')
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [conceptName, setConceptName] = useState('')
@@ -211,7 +218,7 @@ export default function DrillPage() {
       <div style={s.page}>
         <div style={s.completeCard}>
           <div style={s.completeIcon}>{improved ? '🎯' : '📚'}</div>
-          <h2 style={s.completeTitle}>Drill completat!</h2>
+          <h2 style={s.completeTitle}>Exercițiu completat!</h2>
           <p style={s.conceptLabel}>{conceptName}</p>
 
           <div style={s.scoreRow}>
@@ -230,16 +237,45 @@ export default function DrillPage() {
           </div>
 
           {improved && (
-            <div style={s.improvementBadge}>↑ Acuratețea ta a crescut după acest drill</div>
+            <div style={s.improvementBadge}>↑ Acuratețea ta a crescut după acest exercițiu</div>
           )}
 
           <div style={s.completeActions}>
-            <button style={s.btnPrimary} onClick={() => router.push('/dashboard')}>
-              Înapoi la dashboard
-            </button>
-            <button style={s.btnSecondary} onClick={() => router.push('/concepts')}>
-              Vezi concepte slabe
-            </button>
+            {source === 'practice' && (
+              <>
+                <button style={s.btnPrimary} onClick={() => router.push('/practice')}>
+                  Continuă cu întrebările
+                </button>
+                <button style={s.btnSecondary} onClick={() => router.push('/dashboard')}>
+                  Înapoi la dashboard
+                </button>
+              </>
+            )}
+            {source === 'topic' && (
+              <>
+                <button
+                  style={s.btnPrimary}
+                  onClick={() => router.push(`/topics/${returnTopicId}/drill`)}
+                >
+                  {returnCompleted >= returnTotal
+                    ? 'Toate conceptele îmbunătățite 🎯'
+                    : `Mai ai ${returnTotal - returnCompleted} concepte în ${returnTopicName}`}
+                </button>
+                <button style={s.btnSecondary} onClick={() => router.push('/dashboard')}>
+                  Înapoi la dashboard
+                </button>
+              </>
+            )}
+            {(source === 'dashboard' || source === 'special') && (
+              <>
+                <button style={s.btnPrimary} onClick={() => router.push('/dashboard')}>
+                  Înapoi la dashboard
+                </button>
+                <button style={s.btnSecondary} onClick={() => router.push('/concepts')}>
+                  Subiecte de îmbunătățit
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -342,7 +378,7 @@ export default function DrillPage() {
           ) : (
             <button style={s.btnPrimary} onClick={advance}>
               {currentIndex === questions.length - 1
-                ? 'Finalizează drill-ul'
+                ? 'Finalizează exercițiul'
                 : 'Următoarea întrebare →'}
             </button>
           )}

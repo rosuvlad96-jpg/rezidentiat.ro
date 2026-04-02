@@ -220,7 +220,7 @@ export default function PracticePage() {
           style={s.btnPrimary}
           onClick={() => {
             setShowDrillSuggestion(false)
-            if (weakestConcept) router.push(`/drill/${weakestConcept.concept_id}`)
+            if (weakestConcept) router.push(`/drill/${weakestConcept.concept_id}?source=practice`)
           }}
         >
           Începe exercițiul

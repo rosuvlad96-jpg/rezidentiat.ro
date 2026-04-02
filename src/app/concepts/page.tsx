@@ -118,7 +118,7 @@ export default function TopicsPage() {
                 </span>
                 <button
                   style={s.drillBtn}
-                  onClick={() => router.push(`/topics/${topic.topic_id}`)}
+                  onClick={() => router.push(`/topics/${topic.topic_id}/drill`)}
                 >
                   Îmbunătățește
                 </button>

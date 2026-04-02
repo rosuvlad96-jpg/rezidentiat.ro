@@ -109,7 +109,7 @@ export default function DashboardPage() {
         <div style={s.section}>
           <button
             style={s.drillCTA}
-            onClick={() => router.push(`/drill/${weakestConcept.concept_id}`)}
+            onClick={() => router.push(`/drill/${weakestConcept.concept_id}?source=dashboard`)}
           >
             <div>
               <p style={s.drillCTATitle}>Începe exercițiile</p>
