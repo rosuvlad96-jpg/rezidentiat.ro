@@ -63,7 +63,7 @@ export default function TopicsPage() {
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
+        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         <h1 style={s.title}>Subiecte de îmbunătățit</h1>
         <p style={s.subtitle}>Sortate de la cel mai slab la cel mai bun</p>
       </div>

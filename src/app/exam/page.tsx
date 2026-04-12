@@ -97,16 +97,33 @@ export default function ExamPage() {
     const isLast = currentIndex === questions.length - 1
 
     if (isLast) {
-      // Calculate final score
+   // Calculate final score using official Rezidentiat scoring
       let totalScore = 0
       let maxPoints = 0
       questions.forEach(q => {
         maxPoints += q.points
         const chosen = newAnswers[q.id] ?? []
         const correct = q.correct_options
-        const isCorrect =
-          JSON.stringify([...chosen].sort()) === JSON.stringify([...correct].sort())
-        if (isCorrect) totalScore += q.points
+
+        if (q.question_type === 'simplu') {
+          // Simplu: annul if not exactly 1 option selected, else all-or-nothing
+          if (chosen.length === 1 && correct.includes(chosen[0])) {
+            totalScore += q.points
+          }
+        } else {
+          // Multiplu: annul if <2 or >4 selected, otherwise per-option scoring
+          if (chosen.length >= 2 && chosen.length <= 4) {
+            const totalOptions = [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean).length
+            let optionPoints = 0
+            for (let i = 0; i < totalOptions; i++) {
+              const opt = OPTIONS[i]
+              const isCorrectOption = correct.includes(opt)
+              const isSelected = chosen.includes(opt)
+              if (isCorrectOption === isSelected) optionPoints++
+            }
+            totalScore += optionPoints
+          }
+        }
       })
       setScore(totalScore)
       setTotalPoints(maxPoints)
@@ -122,7 +139,7 @@ export default function ExamPage() {
     return (
       <div style={s.page}>
         <div style={s.header}>
-          <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
+           <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         </div>
         <div style={s.setupCard}>
           <h2 style={s.setupTitle}>Simulare examen</h2>
@@ -203,9 +220,9 @@ export default function ExamPage() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
+         <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         <div style={s.headerRow}>
-          <span style={s.modeChip}>Simulare {examSize}q</span>
+          <span style={s.modeChip}>Simulare examen</span>
           <span style={s.progressText}>{currentIndex + 1} / {questions.length}</span>
         </div>
         <div style={s.progressBarWrap}>

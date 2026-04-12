@@ -45,10 +45,11 @@ export default function PracticePage() {
   const [question, setQuestion] = useState<Question | null>(null)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
-  const [explanation, setExplanation] = useState<string>('')
+  const [explanation, setExplanation] = useState<any>(null)
   const [isFullyCorrect, setIsFullyCorrect] = useState<boolean | null>(null)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [errorMessage, setErrorMessage] = useState('')
+  const [correctOptions, setCorrectOptions] = useState<string[]>([])
   const [questionsAnswered, setQuestionsAnswered] = useState(0)
   const [showDrillSuggestion, setShowDrillSuggestion] = useState(false)
   const [weakestConcept, setWeakestConcept] = useState<{ concept_id: string; name: string; topic_name: string } | null>(null)
@@ -120,14 +121,15 @@ export default function PracticePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           questionId: question.id,
-          selected_options: selectedOptions,
+          selectedOptions,
           confidence,
-          session_id: sessionId,
-          practice_mode: 'general',
+          sessionId,
+          mode: 'general',
           concept_id: question.concept_id,
         }),
       })
       const data = await res.json()
+      setCorrectOptions(data.correctOptions || [])
       if (!res.ok) throw new Error(data.error)
 
       setIsFullyCorrect(data.is_fully_correct)
@@ -143,7 +145,7 @@ export default function PracticePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question_id: question.id,
+            questionId: question.id,
             question_type: question.question_type,
             question_category: question.question_category,
             question_text: question.question_text,
@@ -241,7 +243,7 @@ export default function PracticePage() {
 
       {/* Header */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
+        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         <div style={s.headerRow}>
           <span style={s.modeChip}>Practică generală</span>
           <span style={s.countText}>{questionsAnswered} răspunse</span>
@@ -272,8 +274,8 @@ export default function PracticePage() {
             if (!text) return null
 
             const isSelected = selectedOptions.includes(opt)
-            const isCorrect = phase === 'explanation' && question.correct_options.includes(opt)
-            const isWrong = phase === 'explanation' && isSelected && !question.correct_options.includes(opt)
+            const isCorrect = phase === 'explanation' && correctOptions.includes(opt)
+            const isWrong = phase === 'explanation' && isSelected && !correctOptions.includes(opt)
 
             let optStyle = { ...s.option }
             if (phase === 'explanation') {
@@ -315,12 +317,111 @@ export default function PracticePage() {
           </div>
         )}
 
+        {/* Ce ai raspuns — built from data, not AI */}
+{phase === 'explanation' && !isFullyCorrect && (
+  <div style={s.ceAiRaspunsBox}>
+    <p style={s.expLabel}>Ce ai răspuns</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <span style={s.ceAiLabel}>Ai ales:</span>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {selectedOptions.map(opt => (
+            <span
+              key={opt}
+              style={correctOptions.includes(opt) ? s.chipCorrect : s.chipWrong}
+            >
+              {opt.toUpperCase()} {correctOptions.includes(opt) ? '✓' : '✗'}
+            </span>
+          ))}
+        </div>
+      </div>
+      {correctOptions.filter(o => !selectedOptions.includes(o)).length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={s.ceAiLabel}>Ai ratat:</span>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {correctOptions
+              .filter(o => !selectedOptions.includes(o))
+              .map(opt => (
+                <span key={opt} style={s.chipMissed}>
+                  {opt.toUpperCase()}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+        
         {/* Explanation — wrong answer */}
-        {phase === 'explanation' && !isFullyCorrect && explanation && (
-          <div style={s.explanationPanel}>
-            <p style={s.explanationText}>{explanation}</p>
+{phase === 'explanation' && !isFullyCorrect && explanation && (
+  <div style={s.explanationPanel}>
+    {typeof explanation === 'string' ? (
+      <p style={s.explanationText}>{explanation}</p>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {(explanation as any).ce_ai_raspuns && (
+          <div>
+            <p style={s.expLabel}>Ce ai răspuns</p>
+            <p style={s.expText}>{(explanation as any).ce_ai_raspuns}</p>
           </div>
         )}
+        {(explanation as any).ce_se_testeaza && (
+          <div>
+            <p style={s.expLabel}>Ce se testează</p>
+            <p style={s.expText}>{(explanation as any).ce_se_testeaza}</p>
+          </div>
+        )}
+        {(explanation as any).informatia_corecta && (
+          <div>
+            <p style={s.expLabel}>Informația corectă</p>
+            <p style={s.expText}>{(explanation as any).informatia_corecta}</p>
+          </div>
+        )}
+        {(explanation as any).de_ce_corect && (
+          <div>
+            <p style={s.expLabel}>De ce este corect</p>
+            <p style={s.expText}>{(explanation as any).de_ce_corect}</p>
+          </div>
+        )}
+        {(explanation as any).analiza_variantelor && (
+          <div>
+            <p style={s.expLabel}>Analiza variantelor</p>
+            {Object.entries((explanation as any).analiza_variantelor)
+              .filter(([, v]) => v && v !== 'null')
+              .map(([k, v]) => (
+                <p key={k} style={s.expText}><strong>{k.toUpperCase()}:</strong> {v as string}</p>
+              ))}
+          </div>
+        )}
+        {(explanation as any).de_ce_gresit && (
+          <div>
+            <p style={s.expLabel}>De ce ai greșit</p>
+            <p style={s.expText}>{(explanation as any).de_ce_gresit}</p>
+          </div>
+        )}
+        {(explanation as any).de_ce_conteaza && (
+          <div>
+            <p style={s.expLabel}>De ce contează</p>
+            <p style={s.expText}>{(explanation as any).de_ce_conteaza}</p>
+          </div>
+        )}
+        {(explanation as any).retine && (
+          <div style={s.retineBox}>
+            <p style={s.expLabel}>Reține</p>
+            <p style={s.expText}>{(explanation as any).retine}</p>
+          </div>
+        )}
+        {(explanation as any).sursa && (
+          <div>
+            <p style={s.expLabel}>Sursă</p>
+            <p style={s.expSourceText}>{(explanation as any).sursa}</p>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
 
         {/* Correct banner */}
         {phase === 'explanation' && isFullyCorrect && (
@@ -499,4 +600,55 @@ drillSuggestionOverlay: {
     flexDirection: 'column' as const,
     gap: '10px',
   },
+  expLabel: {
+    fontSize: '11px', fontWeight: 700, color: '#38bdf8',
+    textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+    margin: '0 0 4px',
+  },
+  expText: {
+    fontSize: '14px', color: '#cbd5e1', lineHeight: 1.6, margin: 0,
+  },
+  expSourceText: {
+    fontSize: '12px', color: '#64748b', lineHeight: 1.5, margin: 0,
+  },
+  retineBox: {
+    padding: '12px 14px', backgroundColor: 'rgba(56,189,248,0.06)',
+    borderRadius: '8px', border: '1px solid rgba(56,189,248,0.15)',
+  },
+  ceAiRaspunsBox: {
+  marginBottom: '12px',
+  padding: '14px 16px',
+  backgroundColor: '#0a1628',
+  borderRadius: '10px',
+  border: '1px solid #1e293b',
+},
+ceAiLabel: {
+  fontSize: '12px',
+  color: '#64748b',
+  minWidth: '70px',
+},
+chipCorrect: {
+  background: '#166534',
+  color: '#bbf7d0',
+  fontSize: '13px',
+  fontWeight: 600,
+  padding: '3px 10px',
+  borderRadius: '6px',
+},
+chipWrong: {
+  background: '#7f1d1d',
+  color: '#fecaca',
+  fontSize: '13px',
+  fontWeight: 600,
+  padding: '3px 10px',
+  borderRadius: '6px',
+},
+chipMissed: {
+  background: '#78350f',
+  color: '#fde68a',
+  fontSize: '13px',
+  fontWeight: 600,
+  padding: '3px 10px',
+  borderRadius: '6px',
+},
 }

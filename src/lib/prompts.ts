@@ -52,12 +52,14 @@ export function buildConceptualSimpluPrompt({
   correctOption,
   selectedOption,
   confidence,
+  sursa,
 }: {
   questionText: string
   options: Record<string, string>
   correctOption: string
   selectedOption: string
   confidence: number
+  sursa: string | null
 }) {
   return `${SYSTEM_PROMPT}
 
@@ -75,12 +77,11 @@ ${getEmphasisInstruction(confidence)}
 Generează explicația în următorul format JSON:
 {
   "mistake_tag": "${getMistakeTag(confidence)}",
-  "ce_ai_raspuns": "Ai ales [X] (✗). Răspunsul corect este [Y] (✓).",
-  "ce_se_testeaza": "O propoziție care numește conceptul testat.",
+    "ce_se_testeaza": "O propoziție care numește conceptul testat.",
   "de_ce_corect": "2-3 propoziții explicând de ce răspunsul corect este corect.",
   "de_ce_gresit": "Explicație de ce răspunsul ales este greșit — misconceptia specifică.",
   "retine": "O regulă scurtă sau un memento ușor de reținut.",
-  "sursa": "Numele manualului + capitol + pagini"
+  "sursa": "${sursa ?? 'Informație indisponibilă'}"
 }
 
 Răspunde DOAR cu JSON. Niciun text înainte sau după.`
@@ -92,12 +93,14 @@ export function buildConceptualMultipluPrompt({
   correctOptions,
   selectedOptions,
   confidence,
+  sursa,
 }: {
   questionText: string
   options: Record<string, string>
   correctOptions: string[]
   selectedOptions: string[]
   confidence: number
+  sursa: string | null
 }) {
   const missedOptions = correctOptions.filter(o => !selectedOptions.includes(o))
   const wronglySelected = selectedOptions.filter(o => !correctOptions.includes(o))
@@ -120,8 +123,7 @@ ${getEmphasisInstruction(confidence)}
 Generează explicația în următorul format JSON:
 {
   "mistake_tag": "${getMistakeTag(confidence)}",
-  "ce_ai_raspuns": "Care variante sunt corecte (✓), ratate (✗ ratat), greșit selectate (✗).",
-  "ce_se_testeaza": "O propoziție despre conceptul unificator testat.",
+    "ce_se_testeaza": "O propoziție despre conceptul unificator testat.",
   "analiza_variantelor": {
     "a": "De ce A este corectă/greșită.",
     "b": "De ce B este corectă/greșită.",
@@ -129,9 +131,9 @@ Generează explicația în următorul format JSON:
     "d": "De ce D este corectă/greșită.",
     "e": "De ce E este corectă/greșită (dacă există, altfel null)."
   },
-  "de_ce_gresit": "Focusat pe variantele ratate și cele greșit selectate — ce a confundat studentul specific.",
+  "de_ce_gresit": "Focusat pe variantele pe care le-ai ratat și cele greșit selectate — ce ai confundat specific.",
   "retine": "O regulă scurtă sau un memento ușor de reținut.",
-  "sursa": "Numele manualului + capitol + pagini"
+  "sursa": "${sursa ?? 'Informație indisponibilă'}"
 }
 
 Răspunde DOAR cu JSON. Niciun text înainte sau după.`
@@ -142,11 +144,13 @@ export function buildFactualSimpluPrompt({
   options,
   correctOption,
   selectedOption,
+  sursa,
 }: {
   questionText: string
   options: Record<string, string>
   correctOption: string
   selectedOption: string
+  sursa: string | null
 }) {
   return `${SYSTEM_PROMPT}
 
@@ -160,10 +164,10 @@ Răspunsul corect: ${correctOption.toUpperCase()}
 
 Generează explicația în următorul format JSON:
 {
-  "ce_ai_raspuns": "Ai ales [X] (✗). Răspunsul corect este [Y] (✓).",
-  "informatia_corecta": "Faptul medical corect enunțat clar și precis.",
+    "informatia_corecta": "Faptul medical corect enunțat clar și precis.",
   "de_ce_conteaza": "Context clinic scurt — de ce este important acest fapt în practică.",
   "retine": "Un memento sau regulă mnemonică ușor de reținut."
+  "sursa": "${sursa ?? 'Informație indisponibilă'}"
 }
 
 Răspunde DOAR cu JSON. Niciun text înainte sau după.`
@@ -174,11 +178,13 @@ export function buildFactualMultipluPrompt({
   options,
   correctOptions,
   selectedOptions,
+  sursa,
 }: {
   questionText: string
   options: Record<string, string>
   correctOptions: string[]
   selectedOptions: string[]
+  sursa: string | null
 }) {
   const missedOptions = correctOptions.filter(o => !selectedOptions.includes(o))
   const wronglySelected = selectedOptions.filter(o => !correctOptions.includes(o))
@@ -197,8 +203,7 @@ Variante greșit selectate: ${wronglySelected.map(o => o.toUpperCase()).join(', 
 
 Generează explicația în următorul format JSON:
 {
-  "ce_ai_raspuns": "Care variante sunt corecte (✓), ratate (✗ ratat), greșit selectate (✗).",
-  "analiza_variantelor": {
+    "analiza_variantelor": {
     "a": "Faptul medical + de ce A este corectă/greșită.",
     "b": "Faptul medical + de ce B este corectă/greșită.",
     "c": "Faptul medical + de ce C este corectă/greșită.",
@@ -206,6 +211,7 @@ Generează explicația în următorul format JSON:
     "e": "Faptul medical + de ce E este corectă/greșită (dacă există, altfel null)."
   },
   "retine": "Un memento care grupează faptele corecte împreună."
+  "sursa": "${sursa ?? 'Informație indisponibilă'}"
 }
 
 Răspunde DOAR cu JSON. Niciun text înainte sau după.`
@@ -346,6 +352,7 @@ Cerințe stricte:
 - Pentru multiplu: correct_options conține toate literele corecte ex: ["a","c"]
 - Pentru simplu: correct_options conține exact o literă ex: ["b"]
 - Limbă română medicală standard
+
 
 Răspunde DOAR cu array JSON valid, fără text înainte sau după, fără backticks:
 [

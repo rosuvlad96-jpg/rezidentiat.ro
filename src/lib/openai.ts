@@ -29,7 +29,18 @@ export async function generateExplanation(prompt: string): Promise<string> {
     throw new Error('No content in OpenAI response')
   }
 
-  const clean = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Strip markdown backticks
+  let clean = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+  // If response starts with text before JSON, extract just the JSON part
+  const arrayStart = clean.indexOf('[')
+  const objectStart = clean.indexOf('{')
+
+  if (arrayStart !== -1 && (objectStart === -1 || arrayStart < objectStart)) {
+    clean = clean.slice(arrayStart, clean.lastIndexOf(']') + 1)
+  } else if (objectStart !== -1) {
+    clean = clean.slice(objectStart, clean.lastIndexOf('}') + 1)
+  }
 
   return clean
 }

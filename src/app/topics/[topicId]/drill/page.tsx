@@ -66,7 +66,7 @@ export default function TopicDrillPage() {
     return (
       <div style={s.centered}>
         <p style={s.errorText}>{errorMessage || 'Eroare la încărcare'}</p>
-        <button style={s.btnSecondary} onClick={() => router.back()}>Înapoi</button>
+        <button style={s.btnSecondary} onClick={() => router.push('/concepts')}>← Subiecte de îmbunătățit</button>
       </div>
     )
   }
@@ -92,7 +92,7 @@ export default function TopicDrillPage() {
     )
   }
 
-  // No weak concepts
+// No weak concepts
   if (data.total_weak === 0) {
     return (
       <div style={s.page}>
@@ -100,8 +100,8 @@ export default function TopicDrillPage() {
           <div style={s.completeIcon}>✅</div>
           <h2 style={s.completeTitle}>Nu ai concepte slabe în</h2>
           <p style={s.topicName}>{data.topic_name}</p>
-          <button style={s.btnPrimary} onClick={() => router.back()}>
-            Înapoi
+          <button style={s.btnPrimary} onClick={() => router.push('/concepts')}>
+            Subiecte de îmbunătățit
           </button>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function TopicDrillPage() {
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.back()}>←</button>
+        <button style={s.backBtn} onClick={() => router.push('/concepts')}>← Subiecte de îmbunătățit</button>
         <p style={s.topicLabel}>{data.topic_name}</p>
       </div>
 

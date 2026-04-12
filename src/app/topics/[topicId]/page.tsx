@@ -74,7 +74,7 @@ export default function TopicDetailPage() {
     return (
       <div style={s.centered}>
         <p style={s.errorText}>{errorMessage || 'Subiect negăsit'}</p>
-        <button style={s.btnSecondary} onClick={() => router.back()}>Înapoi</button>
+        <button style={s.btnSecondary} onClick={() => router.push('/dashboard')}>← Dashboard</button>
       </div>
     )
   }
@@ -86,7 +86,7 @@ export default function TopicDetailPage() {
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.back()}>←</button>
+        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         <div style={s.headerInfo}>
           <p style={s.domainLabel}>{topic.domain_name}</p>
           <h1 style={s.title}>{topic.topic_name}</h1>

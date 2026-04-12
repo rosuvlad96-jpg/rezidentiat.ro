@@ -67,7 +67,7 @@ export default function DomainDetailPage() {
     return (
       <div style={s.centered}>
         <p style={s.errorText}>{errorMessage || 'Domeniu negăsit'}</p>
-        <button style={s.btnSecondary} onClick={() => router.back()}>Înapoi</button>
+        <button style={s.btnSecondary} onClick={() => router.push('/dashboard')}>← Dashboard</button>
       </div>
     )
   }
@@ -76,7 +76,7 @@ export default function DomainDetailPage() {
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
+        <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
         <div style={s.headerInfo}>
           <h1 style={s.title}>{domain.domain_name}</h1>
           <div style={s.domainStats}>
@@ -95,8 +95,16 @@ export default function DomainDetailPage() {
       {/* Topics list */}
       <div style={s.section}>
         <p style={s.sectionTitle}>Subiecte ({domain.topics.length})</p>
-        <div style={s.topicList}>
-          {domain.topics.map(topic => (
+         <div style={s.topicList}>
+          {[...domain.topics]
+            .sort((a, b) => {
+              if (a.total_attempts === 0 && b.total_attempts > 0) return 1
+              if (a.total_attempts > 0 && b.total_attempts === 0) return -1
+              if (a.accuracy === null && b.accuracy !== null) return 1
+              if (a.accuracy !== null && b.accuracy === null) return -1
+              return (a.accuracy ?? 1) - (b.accuracy ?? 1)
+            })
+            .map(topic => (
             <button
               key={topic.topic_id}
               style={s.topicCard}
@@ -108,7 +116,7 @@ export default function DomainDetailPage() {
                   <p style={s.weakHint}>{topic.weak_concept_count} concepte de îmbunătățit</p>
                 )}
                 {topic.total_attempts === 0 && (
-                  <p style={s.notAttempted}>Neîncercat</p>
+                  <p style={s.notAttempted}>0 întrebări răspunse</p>
                 )}
               </div>
               <div style={s.topicRight}>

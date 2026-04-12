@@ -4,11 +4,19 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { trackClientEvent } from '@/lib/analytics-client'
 
-interface Chapter {
+interface Subcapitol {
+  id: string
+  subchapter_name: string
+  page_start: number | null
+  page_end: number | null
+  display_order: number
+}
+
+interface Book {
   id: string
   book_name: string
-  chapter_name: string
   display_order: number
+  subcapitole: Subcapitol[]
 }
 
 interface Question {
@@ -41,43 +49,47 @@ export default function ChaptersPage() {
   const router = useRouter()
 
   const [phase, setPhase] = useState<Phase>('setup')
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null)
+  const [books, setBooks] = useState<Book[]>([])
+  const [expandedBookId, setExpandedBookId] = useState<string | null>(null)
+  const [selectedSubcapitol, setSelectedSubcapitol] = useState<Subcapitol | null>(null)
+  const [selectedBookName, setSelectedBookName] = useState<string>('')
   const [question, setQuestion] = useState<Question | null>(null)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
-  const [explanation, setExplanation] = useState<string>('')
+  const [explanation, setExplanation] = useState<any>(null)
   const [isFullyCorrect, setIsFullyCorrect] = useState<boolean | null>(null)
+  const [correctOptions, setCorrectOptions] = useState<string[]>([])
   const [questionsAnswered, setQuestionsAnswered] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [sessionId] = useState(() => crypto.randomUUID())
 
-  // ── Load chapters on mount ─────────────────────────────────────────────────
+  // ── Load books with subcapitole on mount ───────────────────────────────────
   useEffect(() => {
-    async function loadChapters() {
+    async function loadBooks() {
       try {
         const res = await fetch('/api/chapters')
         const data = await res.json()
         if (!res.ok) throw new Error(data.error)
-        setChapters(data)
+        setBooks(data)
       } catch (err: any) {
         setErrorMessage(err.message)
         setPhase('error')
       }
     }
-    loadChapters()
+    loadBooks()
   }, [])
 
-  // ── Load next question for selected chapter ────────────────────────────────
-  const loadNextQuestion = async (chapterId: string) => {
+  // ── Load next question for selected subcapitol ─────────────────────────────
+  const loadNextQuestion = async (subcapitolId: string) => {
     setPhase('loading')
     setSelectedOptions([])
     setConfidence(null)
-    setExplanation('')
+    setExplanation(null)
     setIsFullyCorrect(null)
+    setCorrectOptions([])
 
     try {
-      const res = await fetch(`/api/questions?mode=chapter&chapterId=${chapterId}`)
+      const res = await fetch(`/api/questions?mode=chapter&subcapitolId=${subcapitolId}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setQuestion(data)
@@ -88,12 +100,13 @@ export default function ChaptersPage() {
     }
   }
 
-  // ── Select chapter and start ───────────────────────────────────────────────
- const selectChapter = (chapter: Chapter) => {
-    setSelectedChapter(chapter)
+  // ── Select subcapitol and start ────────────────────────────────────────────
+  const selectSubcapitol = (subcapitol: Subcapitol, bookName: string) => {
+    setSelectedSubcapitol(subcapitol)
+    setSelectedBookName(bookName)
     setQuestionsAnswered(0)
     trackClientEvent('SESSION_START', { practice_mode: 'chapter' }, sessionId)
-    loadNextQuestion(chapter.id)
+    loadNextQuestion(subcapitol.id)
   }
 
   // ── Toggle option ──────────────────────────────────────────────────────────
@@ -122,10 +135,11 @@ export default function ChaptersPage() {
           confidence,
           sessionId,
           mode: 'chapter',
-          conceptId: question.concept_id,
+          concept_id: question.concept_id,
         }),
       })
       const data = await res.json()
+      setCorrectOptions(data.correctOptions || [])
       if (!res.ok) throw new Error(data.error)
 
       setIsFullyCorrect(data.is_fully_correct)
@@ -136,7 +150,7 @@ export default function ChaptersPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question_id: question.id,
+            questionId: question.id,
             question_type: question.question_type,
             question_category: question.question_category,
             question_text: question.question_text,
@@ -148,7 +162,7 @@ export default function ChaptersPage() {
               ...(question.option_e ? { e: question.option_e } : {}),
             },
             correct_options: question.correct_options,
-            selected_options: selectedOptions,
+            selectedOptions,
             confidence,
             concept_id: question.concept_id,
           }),
@@ -156,10 +170,10 @@ export default function ChaptersPage() {
         const expData = await expRes.json()
         setExplanation(expData.explanation)
         await trackClientEvent('EXPLANATION_VIEWED', {
-  question_id: question.id,
-  concept_id: question.concept_id,
-  practice_mode: 'chapter',
-}, sessionId)
+          question_id: question.id,
+          concept_id: question.concept_id,
+          practice_mode: 'chapter',
+        }, sessionId)
       }
 
       setPhase('explanation')
@@ -175,46 +189,58 @@ export default function ChaptersPage() {
       <div style={s.centered}>
         <p style={s.errorText}>{errorMessage}</p>
         <button style={s.btnSecondary} onClick={() => router.push('/dashboard')}>
-          Înapoi la dashboard
+          ← Dashboard
         </button>
       </div>
     )
   }
 
-  // ── Render: setup (chapter selection) ─────────────────────────────────────
+  // ── Render: setup (book accordion + subchapter selection) ─────────────────
   if (phase === 'setup') {
-    const books = [...new Set(chapters.map(c => c.book_name))]
-
     return (
       <div style={s.page}>
         <div style={s.header}>
-          <button style={s.backBtn} onClick={() => router.push('/dashboard')}>←</button>
-          <span style={s.modeChip}>Practică pe capitole</span>
+          <button style={s.backBtn} onClick={() => router.push('/dashboard')}>← Dashboard</button>
+          <h1 style={s.pageTitle}>Practică pe capitole</h1>
+          <p style={s.pageSubtitle}>Alege un capitol din bibliografie</p>
         </div>
 
-        {chapters.length === 0 ? (
+        {books.length === 0 ? (
           <div style={s.centered}>
             <p style={s.loadingText}>Se încarcă capitolele...</p>
           </div>
         ) : (
-          <div style={s.chapterList}>
-            {books.map(book => (
-              <div key={book}>
-                <p style={s.bookName}>{book}</p>
-                {chapters
-                  .filter(c => c.book_name === book)
-                  .sort((a, b) => a.display_order - b.display_order)
-                  .map(chapter => (
-                    <button
-                      key={chapter.id}
-                      style={s.chapterBtn}
-                      onClick={() => selectChapter(chapter)}
-                    >
-                      {chapter.chapter_name}
-                    </button>
-                  ))}
-              </div>
-            ))}
+          <div style={s.accordionList}>
+            {books.map(book => {
+              const isExpanded = expandedBookId === book.id
+              return (
+                <div key={book.id} style={s.accordionItem}>
+                  <button
+                    style={isExpanded ? { ...s.bookHeader, ...s.bookHeaderActive } : s.bookHeader}
+                    onClick={() => setExpandedBookId(isExpanded ? null : book.id)}
+                  >
+                    <span style={s.bookTitle}>{book.book_name}</span>
+                    <span style={s.bookMeta}>{book.subcapitole.length} capitole {isExpanded ? '▲' : '▼'}</span>
+                  </button>
+
+                  {isExpanded && (
+                    <div style={s.subcapList}>
+                      {book.subcapitole.map((sub, index) => (
+                        <button
+                          key={sub.id}
+                          style={s.subcapBtn}
+                          onClick={() => selectSubcapitol(sub, book.book_name)}
+                        >
+                          <span style={s.subcapIndex}>{index + 1}</span>
+                          <span style={s.subcapName}>{sub.subchapter_name}</span>
+                          <span style={s.subcapArrow}>→</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -238,9 +264,9 @@ export default function ChaptersPage() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => setPhase('setup')}>←</button>
+        <button style={s.backBtn} onClick={() => setPhase('setup')}>← Alege capitolul</button>
         <div style={s.headerRow}>
-          <span style={s.modeChip}>{selectedChapter?.chapter_name}</span>
+          <span style={s.modeChip}>{selectedSubcapitol?.subchapter_name}</span>
           <span style={s.countText}>{questionsAnswered} răspunse</span>
         </div>
       </div>
@@ -267,9 +293,8 @@ export default function ChaptersPage() {
             if (!text) return null
 
             const isSelected = selectedOptions.includes(opt)
-            const isCorrect = phase === 'explanation' && question.correct_options.includes(opt)
-            const isWrong =
-              phase === 'explanation' && isSelected && !question.correct_options.includes(opt)
+            const isCorrect = phase === 'explanation' && correctOptions.includes(opt)
+            const isWrong = phase === 'explanation' && isSelected && !correctOptions.includes(opt)
 
             let optStyle = { ...s.option }
             if (phase === 'explanation') {
@@ -314,12 +339,100 @@ export default function ChaptersPage() {
           </div>
         )}
 
-        {phase === 'explanation' && !isFullyCorrect && explanation && (
-          <div style={s.explanationPanel}>
-            <p style={s.explanationText}>{explanation}</p>
+        {/* Ce ai raspuns */}
+        {phase === 'explanation' && !isFullyCorrect && (
+          <div style={s.ceAiRaspunsBox}>
+            <p style={s.expLabel}>Ce ai răspuns</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={s.ceAiLabel}>Ai ales:</span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {selectedOptions.map(opt => (
+                    <span key={opt} style={correctOptions.includes(opt) ? s.chipCorrect : s.chipWrong}>
+                      {opt.toUpperCase()} {correctOptions.includes(opt) ? '✓' : '✗'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {correctOptions.filter(o => !selectedOptions.includes(o)).length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={s.ceAiLabel}>Ai ratat:</span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {correctOptions.filter(o => !selectedOptions.includes(o)).map(opt => (
+                      <span key={opt} style={s.chipMissed}>{opt.toUpperCase()}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
+        {/* Explanation — wrong answer */}
+        {phase === 'explanation' && !isFullyCorrect && explanation && (
+          <div style={s.explanationPanel}>
+            {typeof explanation === 'string' ? (
+              <p style={s.explanationText}>{explanation}</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {(explanation as any).ce_se_testeaza && (
+                  <div>
+                    <p style={s.expLabel}>Ce se testează</p>
+                    <p style={s.expText}>{(explanation as any).ce_se_testeaza}</p>
+                  </div>
+                )}
+                {(explanation as any).informatia_corecta && (
+                  <div>
+                    <p style={s.expLabel}>Informația corectă</p>
+                    <p style={s.expText}>{(explanation as any).informatia_corecta}</p>
+                  </div>
+                )}
+                {(explanation as any).de_ce_corect && (
+                  <div>
+                    <p style={s.expLabel}>De ce este corect</p>
+                    <p style={s.expText}>{(explanation as any).de_ce_corect}</p>
+                  </div>
+                )}
+                {(explanation as any).analiza_variantelor && (
+                  <div>
+                    <p style={s.expLabel}>Analiza variantelor</p>
+                    {Object.entries((explanation as any).analiza_variantelor)
+                      .filter(([, v]) => v && v !== 'null')
+                      .map(([k, v]) => (
+                        <p key={k} style={s.expText}><strong>{k.toUpperCase()}:</strong> {v as string}</p>
+                      ))}
+                  </div>
+                )}
+                {(explanation as any).de_ce_gresit && (
+                  <div>
+                    <p style={s.expLabel}>De ce ai greșit</p>
+                    <p style={s.expText}>{(explanation as any).de_ce_gresit}</p>
+                  </div>
+                )}
+                {(explanation as any).de_ce_conteaza && (
+                  <div>
+                    <p style={s.expLabel}>De ce contează</p>
+                    <p style={s.expText}>{(explanation as any).de_ce_conteaza}</p>
+                  </div>
+                )}
+                {(explanation as any).retine && (
+                  <div style={s.retineBox}>
+                    <p style={s.expLabel}>Reține</p>
+                    <p style={s.expText}>{(explanation as any).retine}</p>
+                  </div>
+                )}
+                {(explanation as any).sursa && (
+                  <div>
+                    <p style={s.expLabel}>Sursă</p>
+                    <p style={s.expSourceText}>{(explanation as any).sursa}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Correct banner */}
         {phase === 'explanation' && isFullyCorrect && (
           <div style={s.correctBanner}>✓ Corect!</div>
         )}
@@ -336,7 +449,7 @@ export default function ChaptersPage() {
           ) : (
             <button
               style={s.btnPrimary}
-              onClick={() => loadNextQuestion(selectedChapter!.id)}
+              onClick={() => loadNextQuestion(selectedSubcapitol!.id)}
             >
               Următoarea întrebare →
             </button>
@@ -357,33 +470,64 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: 'center', minHeight: '100vh',
     backgroundColor: '#020917', gap: '16px', fontFamily: 'DM Sans, sans-serif',
   },
-  header: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' },
+  header: { padding: '20px 20px 8px' },
   backBtn: {
     background: 'none', border: 'none', color: '#94a3b8',
-    fontSize: '20px', cursor: 'pointer', padding: '4px 8px 4px 0',
-    alignSelf: 'flex-start',
+    fontSize: '14px', cursor: 'pointer', padding: '4px 0',
+    alignSelf: 'flex-start', fontFamily: 'DM Sans, sans-serif',
+    fontWeight: 600, display: 'block', marginBottom: '16px',
   },
+  pageTitle: { fontSize: '22px', color: '#f1f5f9', fontWeight: 700, margin: '0 0 6px' },
+  pageSubtitle: { fontSize: '13px', color: '#64748b', margin: '0 0 8px' },
   headerRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   },
   modeChip: {
-    fontSize: '13px', color: '#38bdf8', fontWeight: 600,
+    fontSize: '12px', color: '#38bdf8', fontWeight: 600,
     background: 'rgba(56,189,248,0.1)', borderRadius: '6px', padding: '4px 10px',
+    maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   countText: { fontSize: '13px', color: '#64748b' },
-  chapterList: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '8px' },
-  bookName: {
-    fontSize: '12px', color: '#64748b', fontWeight: 700,
-    textTransform: 'uppercase', letterSpacing: '0.05em',
-    marginTop: '20px', marginBottom: '8px',
+  accordionList: { padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: '10px' },
+  accordionItem: {
+    borderRadius: '12px', overflow: 'hidden',
+    border: '1px solid #1e293b',
   },
-  chapterBtn: {
-    width: '100%', padding: '14px 16px', borderRadius: '10px',
-    border: '1px solid #1e293b', backgroundColor: '#0f172a',
-    color: '#cbd5e1', fontSize: '14px', cursor: 'pointer',
-    textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
-    display: 'block', marginBottom: '6px',
+  bookHeader: {
+    width: '100%', padding: '16px 20px',
+    backgroundColor: '#0f172a', border: 'none',
+    cursor: 'pointer', textAlign: 'left',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    gap: '12px', fontFamily: 'DM Sans, sans-serif',
   },
+  bookHeaderActive: {
+    backgroundColor: '#162032',
+    borderBottom: '1px solid #1e293b',
+  },
+  bookTitle: {
+    fontSize: '15px', color: '#f1f5f9', fontWeight: 700, flex: 1, lineHeight: 1.4,
+  },
+  bookMeta: {
+    fontSize: '12px', color: '#38bdf8', fontWeight: 600, whiteSpace: 'nowrap',
+  },
+  subcapList: {
+    backgroundColor: '#0a1628',
+    display: 'flex', flexDirection: 'column',
+  },
+  subcapBtn: {
+    width: '100%', padding: '14px 20px',
+    backgroundColor: 'transparent', border: 'none',
+    borderBottom: '1px solid #1e293b',
+    cursor: 'pointer', textAlign: 'left',
+    display: 'flex', alignItems: 'center', gap: '12px',
+    fontFamily: 'DM Sans, sans-serif',
+  },
+  subcapIndex: {
+    fontSize: '11px', color: '#475569', fontWeight: 700,
+    minWidth: '20px',
+  },
+  subcapName: { fontSize: '14px', color: '#cbd5e1', lineHeight: 1.4, flex: 1 },
+  subcapArrow: { fontSize: '14px', color: '#475569' },
   card: {
     margin: '0 16px', padding: '24px 20px',
     backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b',
@@ -462,4 +606,31 @@ const s: Record<string, React.CSSProperties> = {
   },
   loadingText: { color: '#64748b', fontSize: '14px' },
   errorText: { color: '#ef4444', fontSize: '14px', marginBottom: '16px' },
+  ceAiRaspunsBox: {
+    marginBottom: '12px', padding: '14px 16px',
+    backgroundColor: '#0a1628', borderRadius: '10px', border: '1px solid #1e293b',
+  },
+  ceAiLabel: { fontSize: '12px', color: '#64748b', minWidth: '70px' },
+  chipCorrect: {
+    background: '#166534', color: '#bbf7d0',
+    fontSize: '13px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px',
+  },
+  chipWrong: {
+    background: '#7f1d1d', color: '#fecaca',
+    fontSize: '13px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px',
+  },
+  chipMissed: {
+    background: '#78350f', color: '#fde68a',
+    fontSize: '13px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px',
+  },
+  expLabel: {
+    fontSize: '11px', fontWeight: 700, color: '#38bdf8',
+    textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 4px',
+  },
+  expText: { fontSize: '14px', color: '#cbd5e1', lineHeight: 1.6, margin: 0 },
+  expSourceText: { fontSize: '12px', color: '#64748b', lineHeight: 1.5, margin: 0 },
+  retineBox: {
+    padding: '12px 14px', backgroundColor: 'rgba(56,189,248,0.06)',
+    borderRadius: '8px', border: '1px solid rgba(56,189,248,0.15)',
+  },
 }

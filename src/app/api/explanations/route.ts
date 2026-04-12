@@ -22,14 +22,16 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
   const {
-    questionId,
-    selectedOptions,
-    confidence,
-    isDrill,
-    followUpType,
-    originalExplanation,
-    drillAngle,
-  } = body
+  questionId,
+  selectedOptions: selectedOptionsCamel,
+  selected_options,
+  confidence,
+  isDrill,
+  followUpType,
+  originalExplanation,
+  drillAngle,
+} = body
+const selectedOptions = selectedOptionsCamel ?? selected_options
 
   // Get question details
   const { data: question } = await supabase
@@ -78,6 +80,14 @@ export async function POST(request: NextRequest) {
 
   const correctOptions = question.correct_options as string[]
   const correctOption = correctOptions[0]
+
+// Build source reference from concept_subcapitole
+const primarySubcap = (question.concepts as any)?.concept_subcapitole
+  ?.find((cs: any) => cs.is_primary)?.subcapitole
+
+const sursa = primarySubcap
+  ? `${primarySubcap.chapters?.book_name} — ${primarySubcap.subchapter_name}, p.${primarySubcap.page_start}–${primarySubcap.page_end}`
+  : null
 
   // Check if explanation already exists in cache
   if (!followUpType && !isDrill) {
@@ -128,6 +138,7 @@ export async function POST(request: NextRequest) {
         correctOption,
         selectedOption: selectedOptions[0],
         confidence,
+        sursa,
       })
     } else if (category === 'conceptual' && type === 'multiplu') {
       prompt = buildConceptualMultipluPrompt({
@@ -136,6 +147,7 @@ export async function POST(request: NextRequest) {
         correctOptions,
         selectedOptions,
         confidence,
+        sursa,
       })
     } else if (category === 'factual' && type === 'simplu') {
       prompt = buildFactualSimpluPrompt({
@@ -143,6 +155,7 @@ export async function POST(request: NextRequest) {
         options,
         correctOption,
         selectedOption: selectedOptions[0],
+        sursa,
       })
     } else {
       prompt = buildFactualMultipluPrompt({
@@ -150,6 +163,7 @@ export async function POST(request: NextRequest) {
         options,
         correctOptions,
         selectedOptions,
+        sursa,
       })
     }
   }

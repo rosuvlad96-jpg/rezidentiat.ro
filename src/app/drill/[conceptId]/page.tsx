@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,8 +59,15 @@ export default function DrillPage() {
   const [errorMessage, setErrorMessage] = useState('')
 
   // ── Start drill on mount ───────────────────────────────────────────────────
+  const startedRef = useRef<string | null>(null)  
+  
   useEffect(() => {
+    let cancelled = false
+
     async function startDrill() {
+       if (startedRef.current === conceptId) return
+      startedRef.current = conceptId
+
       try {
         const res = await fetch('/api/drills', {
           method: 'POST',
@@ -85,6 +92,7 @@ export default function DrillPage() {
       }
     }
     startDrill()
+    return () => { cancelled = true }
   }, [conceptId])
 
   // ── Toggle answer option ───────────────────────────────────────────────────
@@ -154,7 +162,7 @@ export default function DrillPage() {
             assignment_id: assignmentId,
             concept_id: conceptId,
             correct_count: correct,
-            total_count: finalResults.length,
+            total_count: questions.length,
           }),
         })
         const data = await res.json()
@@ -186,8 +194,14 @@ export default function DrillPage() {
         }),
       })
     }
-    router.back()
-  }, [assignmentId, conceptId, results.length, router])
+    if (source === 'topic') {
+      router.push('/concepts')
+    } else if (source === 'practice') {
+      router.push('/practice')
+    } else {
+      router.push('/dashboard')
+    }
+  }, [assignmentId, conceptId, results.length, router, source])
 
   // ── Render: loading ────────────────────────────────────────────────────────
   if (phase === 'loading') {
@@ -312,7 +326,7 @@ export default function DrillPage() {
 
         <p style={s.questionText}>{currentQ.question_text}</p>
 
-        <div style={s.optionsList}>
+          <div key={`${currentIndex}-${phase}`} style={s.optionsList}>
           {OPTIONS.map(opt => {
             const text = currentQ[`option_${opt}` as keyof DrillQuestion] as string
             if (!text) return null
@@ -343,11 +357,35 @@ export default function DrillPage() {
           })}
         </div>
 
+       {/* Ce ai raspuns — shown for wrong answers only */}
+        {phase === 'explanation' && explanation && !explanation.is_fully_correct && (
+          <div style={s.ceAiRaspunsRow}>
+            {OPTIONS.map(opt => {
+              const text = currentQ[`option_${opt}` as keyof DrillQuestion] as string
+              if (!text) return null
+              const isSelected = selectedOptions.includes(opt)
+              const isCorrect = explanation.correct_options.includes(opt)
+              if (!isSelected && !isCorrect) return null
+              const chipStyle = isSelected && isCorrect
+                ? s.chipCorrect
+                : isSelected && !isCorrect
+                ? s.chipWrong
+                : s.chipMissed
+              const icon = isSelected && isCorrect ? '✓' : isSelected && !isCorrect ? '✗' : '○'
+              return (
+                <span key={opt} style={chipStyle}>
+                  {icon} {opt.toUpperCase()}
+                </span>
+              )
+            })}
+          </div>
+        )}
+
         {/* Explanation — wrong answer */}
         {phase === 'explanation' && explanation && !explanation.is_fully_correct && (
           <div style={s.explanationPanel}>
             <div style={s.explanationSection}>
-              <span style={s.explanationLabel}>De ce este corect</span>
+              <span style={s.explanationLabel}>De ce {[...explanation.correct_options].sort().map(o => o.toUpperCase()).join(', ')} {explanation.correct_options.length === 1 ? 'este corect' : 'sunt corecte'}</span>
               <p style={s.explanationText}>{explanation.explanation}</p>
             </div>
             <div style={s.retineBox}>
@@ -608,4 +646,22 @@ const s: Record<string, React.CSSProperties> = {
   completeActions: { display: 'flex', flexDirection: 'column', gap: '12px' },
   loadingText: { color: '#64748b', fontSize: '14px' },
   errorText: { color: '#ef4444', fontSize: '14px', marginBottom: '16px' },
+  ceAiRaspunsRow: {
+    display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px',
+  },
+  chipCorrect: {
+    padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+    backgroundColor: 'rgba(34,197,94,0.1)', color: '#22c55e',
+    border: '1px solid rgba(34,197,94,0.3)',
+  },
+  chipWrong: {
+    padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+    backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444',
+    border: '1px solid rgba(239,68,68,0.3)',
+  },
+  chipMissed: {
+    padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+    backgroundColor: 'rgba(234,179,8,0.1)', color: '#eab308',
+    border: '1px solid rgba(234,179,8,0.3)',
+  },
 }

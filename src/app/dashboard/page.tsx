@@ -160,33 +160,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Domain circles ── */}
-      <div style={s.section}>
-        <p style={s.sectionTitle}>Domenii</p>
-        <div style={s.domainsGrid}>
-          {domains.map(domain => (
-            <button
-              key={domain.id}
-              style={s.domainItem}
-              onClick={() => router.push(`/domains/${domain.id}`)}
-            >
-              <div
-                style={{
-                  ...s.domainCircle,
-                  borderColor: accuracyColor(domain.accuracy),
-                  boxShadow: `0 0 0 2px ${accuracyColor(domain.accuracy)}22`,
-                }}
-              >
-                <span style={s.domainAccuracy}>
-                  {accuracyLabel(domain.accuracy)}
-                </span>
-              </div>
-              <span style={s.domainName}>{domain.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Practice mode cards ── */}
       <div style={s.section}>
         <p style={s.sectionTitle}>Moduri de practică</p>
@@ -211,6 +184,33 @@ export default function DashboardPage() {
             <span style={s.modeTitle}>Simulare examen</span>
             <span style={s.modeDesc}>50, 100 sau 200 de întrebări</span>
           </button>
+        </div>
+      </div>
+
+      {/* ── Domain circles ── */}
+      <div style={s.section}>
+        <p style={s.sectionTitle}>Domenii</p>
+        <div style={s.domainsGrid}>
+          {domains.map(domain => (
+            <button
+              key={domain.id}
+              style={s.domainItem}
+              onClick={() => router.push(`/domains/${domain.id}`)}
+            >
+              <div
+                style={{
+                  ...s.domainCircle,
+                  borderColor: accuracyColor(domain.accuracy),
+                  boxShadow: `0 0 0 2px ${accuracyColor(domain.accuracy)}22`,
+                }}
+              >
+                <span style={s.domainAccuracy}>
+                  {accuracyLabel(domain.accuracy)}
+                </span>
+              </div>
+              <span style={s.domainName}>{domain.name}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -300,9 +300,9 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: '11px', color: '#94a3b8', textAlign: 'center',
     lineHeight: 1.3, maxWidth: '80px',
   },
-  modeCards: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  modeCards: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
   modeCard: {
-    display: 'flex', alignItems: 'center', gap: '14px',
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px',
     padding: '16px', backgroundColor: '#0f172a', borderRadius: '12px',
     border: '1px solid #1e293b', cursor: 'pointer',
     textAlign: 'left', fontFamily: 'DM Sans, sans-serif', width: '100%',

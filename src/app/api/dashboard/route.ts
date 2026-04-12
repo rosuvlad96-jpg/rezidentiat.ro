@@ -14,7 +14,7 @@ export async function GET() {
   // 1. Fetch all concept stats for this user
   const { data: conceptStats } = await supabase
     .from('user_concept_stats')
-    .select('concept_id, accuracy, classification, domain_id')
+    .select('concept_id, accuracy, classification, concepts(domain_id)')
     .eq('user_id', user.id)
     .eq('exam_id', examId)
 
@@ -28,7 +28,7 @@ export async function GET() {
   // 3. Calculate domain accuracies
   const domainAccuracies = (domains ?? []).map(domain => {
     const domainConcepts = (conceptStats ?? []).filter(
-      s => s.domain_id === domain.id
+      s => (s.concepts as any)?.domain_id === domain.id
     )
     const accuracy =
       domainConcepts.length > 0
