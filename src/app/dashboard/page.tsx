@@ -26,7 +26,7 @@ interface Stats {
 }
 
 interface DashboardData {
-  user: { email: string }
+  user: { email: string; first_name: string | null }
   weakestConcept: WeakestConcept | null
   domains: Domain[]
   stats: Stats
@@ -87,7 +87,20 @@ export default function DashboardPage() {
 
       {/* ── Greeting ── */}
       <div style={s.greeting}>
-        <h1 style={s.greetingTitle}>Bună ziua! 👋</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h1 style={{ ...s.greetingTitle, margin: 0 }}>Salut{data.user.first_name ? `, ${data.user.first_name}` : ''}! 👋</h1>
+          <button
+            style={s.logoutBtn}
+            onClick={async () => {
+              const { createClient } = await import('@/lib/supabase')
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              router.push('/login')
+            }}
+          >
+            Ieșire
+          </button>
+        </div>
         {weakestConcept ? (
           <p style={s.greetingSubtitle}>
             Cel mai slab subiect al tău este{' '}
@@ -310,4 +323,9 @@ const s: Record<string, React.CSSProperties> = {
   modeIcon: { fontSize: '24px' },
   modeTitle: { fontSize: '15px', color: '#f1f5f9', fontWeight: 600, display: 'block' },
   modeDesc: { fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' },
+  logoutBtn: {
+    background: 'none', border: '1px solid #1e293b', color: '#64748b',
+    fontSize: '12px', fontWeight: 600, padding: '6px 12px',
+    borderRadius: '8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+  },
 }

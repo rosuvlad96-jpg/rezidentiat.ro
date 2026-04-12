@@ -8,7 +8,8 @@ import Link from 'next/link'
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -18,20 +19,40 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Prenumele și numele sunt obligatorii')
+      setLoading(false)
+      return
+    }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`,
         },
       },
     })
 
-    if (error) {
-      setError(error.message)
+    if (signUpError) {
+      setError(signUpError.message)
       setLoading(false)
       return
+    }
+
+    // Update users table with first_name and last_name
+    if (data.user) {
+      await supabase
+        .from('users')
+        .update({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`,
+        })
+        .eq('id', data.user.id)
     }
 
     router.push('/dashboard')
@@ -47,14 +68,24 @@ export default function SignupPage() {
         <p className="text-slate-400 mb-8">Începe să înveți pentru rezidențiat</p>
 
         <div className="flex flex-col gap-4">
-          <input
-            type="text"
-            placeholder="Nume complet"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 outline-none"
-            style={{ background: '#1e293b', border: '1px solid #334155' }}
-          />
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Prenume"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 outline-none"
+              style={{ background: '#1e293b', border: '1px solid #334155' }}
+            />
+            <input
+              type="text"
+              placeholder="Nume"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 outline-none"
+              style={{ background: '#1e293b', border: '1px solid #334155' }}
+            />
+          </div>
           <input
             type="email"
             placeholder="Email"

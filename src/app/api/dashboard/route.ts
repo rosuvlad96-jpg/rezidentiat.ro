@@ -89,9 +89,17 @@ export async function GET() {
       )
     : 1
 
+    // Fetch first_name from users table
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('first_name')
+    .eq('id', user.id)
+    .single()
+
   return NextResponse.json({
     user: {
       email: user.email,
+      first_name: userProfile?.first_name ?? null,
     },
     weakestConcept: weakestConcept
       ? {
