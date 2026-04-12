@@ -84,8 +84,8 @@ function shuffleOptions(q: GeneratedDrillQuestion): GeneratedDrillQuestion {
 // ─── Generate a new drill set via OpenAI ─────────────────────────────────────
  
 export async function generateDrillSet(conceptId: string): Promise<number> {
-  const { createServerSupabaseClient } = await import('@/lib/supabase-server')
-  const supabase = await createServerSupabaseClient()
+  const { createAdminSupabaseClient } = await import('@/lib/supabase-server')
+  const supabase = createAdminSupabaseClient()
  
   // 1. Fetch concept details
   const { data: concept, error: conceptError } = await supabase
