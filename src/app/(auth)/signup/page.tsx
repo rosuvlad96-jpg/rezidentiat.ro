@@ -43,16 +43,26 @@ export default function SignupPage() {
       return
     }
 
-    // Update users table with first_name and last_name
+   // Upsert into users table (insert if missing, update if present)
     if (data.user) {
-      await supabase
+      const { error: upsertError } = await supabase
         .from('users')
-        .update({
+        .upsert({
+          id: data.user.id,
+          email: data.user.email,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           full_name: `${firstName.trim()} ${lastName.trim()}`,
+          user_tier: 'regular',
+        }, {
+          onConflict: 'id',
         })
-        .eq('id', data.user.id)
+
+      if (upsertError) {
+        setError(`Cont creat dar profil incomplet: ${upsertError.message}`)
+        setLoading(false)
+        return
+      }
     }
 
     router.push('/dashboard')
